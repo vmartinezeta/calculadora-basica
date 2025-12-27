@@ -1,13 +1,16 @@
 class EcuacionLineal {
     constructor() {
-        this.terminos = [];
+        this.terminosIzq = [];
+        this.terminosDer = [];
+        this.terminos = this.terminosIzq;
+        this.estaSignoIgual = false;
     }
 
     addVar(numero) {
         this.terminos.push({
             tipo: 'variable',
             valor: numero
-        })
+        });
         return this;
     }
 
@@ -20,25 +23,23 @@ class EcuacionLineal {
     }
 
     addSignoIgual() {
-        if (this.terminos.length === 0) {
-            throw new TypeError('No hay un miembro izquierdo');
+        if (this.terminosIzq.length === 0 ) {
+            throw new TypeError('No es una ecuacion');
         }
-        if (this.terminos.some(t => t.tipo === 'signo')) {
-            throw new TypeError('Ya existe un signo en la expresion');
+        if (this.estaSignoIgual) {
+            throw new TypeError('No puede duplicar el signo =');
         }
-        this.terminos.push({
-            tipo:'signo',
-            valor: '='
-        });
+        this.estaSignoIgual = true;
+        this.terminos = this.terminosDer;
         return this;
     }
 
     isValid() {
-        if (this.terminos.every(t => t.tipo !== 'signo')) {
+        if (!this.estaSignoIgual) {
             return false;            
         }
-        const index = this.terminos.findIndex(t => t.tipo === 'signo');
-        if(!this.terminos[index+1]) {
+
+        if(this.terminosIzq.length === 0) {
             return false;
         }
         return true;
@@ -51,32 +52,25 @@ class EcuacionLineal {
 
         this.transponerTerminos();
 
-        const totalDer = this.getMiembro('derecho').map(t => t.termino).reduce((result, termino) => {
+        const totalDer = this.terminosDer.reduce((result, termino) => {
             return result + termino.valor;
         }, 0);
 
-        const totalIzq = this.getMiembro('izquierdo').map(t => t.termino).reduce((result, termino) => {
+        const totalIzq = this.terminosIzq.reduce((result, termino) => {
             return result + termino.valor;
         }, 0);
+
         if ([-1, 1].includes(totalIzq)) {
             if (totalIzq<0) totalDer *=-1;
-            return totalDer;
+            return {
+                incognita: 'x',
+                valor:totalDer
+            };
         } else {
-            const result = totalDer / totalIzq;
-            return result;
+            return {incognita:'x',
+                valor:totalDer / totalIzq
+            };
         }
-    }
-
-    getMiembro(tipo) {
-        const index = this.terminos.findIndex(t => t.tipo === 'signo');
-        if (tipo === 'izquierdo') {
-            return this.terminos.filter((_, i)=> i<index)
-                .map((termino, index) => ({termino, index}));
-        } else if (tipo === 'derecho') {
-            return this.terminos.filter((_, i)=> i>index)
-                .map((termino, index) => ({termino, index}));
-        }
-        throw new TypeError('No es una ecuacion');
     }
 
     transponerTerminos() {
@@ -85,25 +79,51 @@ class EcuacionLineal {
     }
 
     pasarIzqDer() {
-            const array = this.getMiembro('izquierdo')
+            this.terminosIzq
+            .map((termino, index)=> ({termino, index}))
             .filter(({termino}) => termino.tipo === 'numero')
-            array.forEach(({termino, index}) => {
-                this.terminos.splice(index, 1);
+            .forEach(({termino, index}) => {
+                this.terminosIzq.splice(index, 1);
                 termino.valor *=-1;
-                this.terminos.push(termino);
+                this.terminosDer.push(termino);
             });        
     }
 
     pasarDerIzq() {
-            const array = this.getMiembro('derecho')
-            .filter(({termino}) => termino.tipo === 'variable');
-
-            array.forEach(({termino, index}) => {
-                this.terminos.splice(index, 1);
+            this.terminosDer
+            .map((termino, index)=> ({termino, index}))
+            .filter(({termino}) => termino.tipo === 'variable')
+            .forEach(({termino, index}) => {
+                this.terminosDer.splice(index, 1);
                 termino.valor *= -1; 
-                this.terminos.unshift(termino);
+                this.terminosIzq.push(termino);
             });        
 
+    }
+
+    toString() {
+        const terminos = [...this.terminosIzq, {tipo:'signo', valor:'='}, ...this.terminosDer];
+        return terminos.reduce((text, termino, index) => {
+            if (!text && termino.tipo==='variable' && termino.valor>0) {
+                return this.output(termino, 'x');
+            } else if (!text && termino.tipo==='numero' && termino.valor>0) {
+                return this.output(termino);
+            } else if (text && termino.tipo==='variable' && termino.valor>0) {
+                return text + '+' + this.output(termino, 'x');
+            } else if (text && termino.tipo==='numero' && termino.valor>0 && index===this.terminosIzq.length+1) {
+                return text + this.output(termino);
+            }  else if (text && termino.tipo==='numero' && termino.valor>0) {
+                return text + '+' + this.output(termino);
+            }
+            return `${text}${this.output(termino, 'x')}`;
+        },'');
+    }
+
+    output(termino, nombre) {
+        if (termino.tipo === 'variable') {
+            return termino.valor + nombre
+        }
+        return termino.valor;
     }
 }
 
@@ -115,20 +135,25 @@ class Calculadora {
 
     resolver() {
         try {
-            console.log(expresion.resolver());
+            console.log(expresion.toString())
+            const result = expresion.resolver();
+            console.log(result);
         } catch (error) {
             console.log(error);
         }
     }
 }
 
-const crearExpresion = () => new EcuacionLineal();
+const crearEcuacionLineal = () => new EcuacionLineal();
 
-const expresion  = crearExpresion()
-.addVar(2)
-.addNumero(5)
+const expresion  = crearEcuacionLineal()
+.addVar(7)
+.addVar(-2)
+.addNumero(4)
 .addSignoIgual()
-.addNumero(10);
+.addNumero(8)
+.addVar(3)
+.addNumero(2);
 
 const calc = new Calculadora(expresion);
 calc.resolver();
