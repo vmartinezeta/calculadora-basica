@@ -1,5 +1,6 @@
 class EcuacionLineal {
-    constructor() {
+    constructor(incognita) {
+        this.incognita = incognita ?? 'x';
         this.terminosIzq = new Set();
         this.terminosDer = new Set();
         this.terminos = this.terminosIzq;
@@ -59,15 +60,16 @@ class EcuacionLineal {
         const totalIzq = [...this.terminosIzq].reduce((result, termino) => {
             return result + termino.valor;
         }, 0);
-
+        const incognita = this.incognita;
         if ([-1, 1].includes(totalIzq)) {
             if (totalIzq<0) totalDer *=-1;
             return {
-                incognita: 'x',
+                incognita,
                 valor:totalDer
             };
         } else {
-            return {incognita:'x',
+            return {
+                incognita,
                 valor:totalDer / totalIzq
             };
         }
@@ -102,28 +104,29 @@ class EcuacionLineal {
     }
 
     toString() {
-        const terminos = [...this.terminosIzq, {tipo:'signo', valor:'='}, ...this.terminosDer];
-        return terminos.reduce((text, termino, index) => {
-            if (!text && termino.tipo==='variable' && termino.valor>0) {
-                return this.innerText(termino, 'x');
-            } else if (!text && termino.tipo==='numero' && termino.valor>0) {
-                return this.innerText(termino);
-            } else if (text && termino.tipo==='variable' && termino.valor>0) {
-                return text + '+' + this.innerText(termino, 'x');
-            } else if (text && termino.tipo==='numero' && termino.valor>0 && index===this.terminosIzq.size+1) {
-                return text + this.innerText(termino);
-            }  else if (text && termino.tipo==='numero' && termino.valor>0) {
-                return text + '+' + this.innerText(termino);
-            }
-            return `${text}${this.innerText(termino, 'x')}`;
+        let ecuacion = [...this.terminosIzq].reduce((text, termino) => {
+            return this.innerText(text, termino);
         },'');
+        ecuacion += '=';
+        ecuacion += [...this.terminosDer].reduce((text, termino) => {
+            return this.innerText(text, termino);
+        }, '');
+        return ecuacion;
     }
 
-    innerText(termino, nombre) {
-        if (termino.tipo === 'variable') {
-            return termino.valor + nombre
-        }
-        return termino.valor;
+    innerText(text, termino) {
+            if (!text && termino.tipo==='variable' && termino.valor>0) {
+                return termino.valor + this.incognita;
+            } else if (!text && termino.tipo==='numero' && termino.valor>0) {
+                return termino.valor;
+            } else if (text && termino.tipo==='variable' && termino.valor>0) {
+                return text + '+' + termino.valor + this.incognita;
+            } else if (text && termino.tipo==='numero' && termino.valor>0) {
+                return text + '+' + termino.valor;
+            } else if (termino.tipo === 'variable' && termino.valor<0) {
+                return text + termino.valor + this.incognita;
+            }
+            return text + termino.valor;
     }
 }
 
