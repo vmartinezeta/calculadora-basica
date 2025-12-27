@@ -5,6 +5,7 @@ class EcuacionLineal {
         this.terminosDer = new Set();
         this.terminos = this.terminosIzq;
         this.estaSignoIgual = false;
+        this.innerText = this.innerText.bind(this);
     }
 
     addVar(numero) {
@@ -18,13 +19,13 @@ class EcuacionLineal {
     addNumero(numero) {
         this.terminos.add({
             tipo: 'numero',
-            valor:numero
+            valor: numero
         });
         return this;
     }
 
     addSignoIgual() {
-        if (this.terminosIzq.size === 0 ) {
+        if (this.terminosIzq.size === 0) {
             throw new TypeError('No es una ecuacion');
         }
         if (this.estaSignoIgual) {
@@ -37,10 +38,10 @@ class EcuacionLineal {
 
     isValid() {
         if (!this.estaSignoIgual) {
-            return false;            
+            return false;
         }
 
-        if(this.terminosIzq.size === 0) {
+        if (this.terminosIzq.size === 0) {
             return false;
         }
         return true;
@@ -62,15 +63,15 @@ class EcuacionLineal {
         }, 0);
         const incognita = this.incognita;
         if ([-1, 1].includes(totalIzq)) {
-            if (totalIzq<0) totalDer *=-1;
+            if (totalIzq < 0) totalDer *= -1;
             return {
                 incognita,
-                valor:totalDer
+                valor: totalDer
             };
         } else {
             return {
                 incognita,
-                valor:totalDer / totalIzq
+                valor: totalDer / totalIzq
             };
         }
     }
@@ -81,52 +82,45 @@ class EcuacionLineal {
     }
 
     pasarIzqDer() {
-            this.terminosIzq
+        this.terminosIzq
             .forEach((termino) => {
                 if (termino.tipo === 'numero') {
                     this.terminosIzq.delete(termino);
-                    termino.valor *=-1;
+                    termino.valor *= -1;
                     this.terminosDer.add(termino);
                 }
-            });        
+            });
     }
 
     pasarDerIzq() {
-            this.terminosDer
+        this.terminosDer
             .forEach((termino) => {
                 if (termino.tipo === 'variable') {
                     this.terminosDer.delete(termino);
-                    termino.valor *= -1; 
+                    termino.valor *= -1;
                     this.terminosIzq.add(termino);
                 }
-            });        
+            });
 
     }
 
     toString() {
-        let ecuacion = [...this.terminosIzq].reduce((text, termino) => {
-            return this.innerText(text, termino);
-        },'');
-        ecuacion += '=';
-        ecuacion += [...this.terminosDer].reduce((text, termino) => {
-            return this.innerText(text, termino);
-        }, '');
-        return ecuacion;
+        return [...this.terminosIzq].reduce(this.innerText, '') + '=' + [...this.terminosDer].reduce(this.innerText, '');
     }
 
     innerText(text, termino) {
-            if (!text && termino.tipo==='variable' && termino.valor>0) {
-                return termino.valor + this.incognita;
-            } else if (!text && termino.tipo==='numero' && termino.valor>0) {
-                return termino.valor;
-            } else if (text && termino.tipo==='variable' && termino.valor>0) {
-                return text + '+' + termino.valor + this.incognita;
-            } else if (text && termino.tipo==='numero' && termino.valor>0) {
-                return text + '+' + termino.valor;
-            } else if (termino.tipo === 'variable' && termino.valor<0) {
-                return text + termino.valor + this.incognita;
-            }
-            return text + termino.valor;
+        if (!text && termino.tipo === 'variable' && termino.valor > 0) {
+            return termino.valor + this.incognita;
+        } else if (!text && termino.tipo === 'numero' && termino.valor > 0) {
+            return termino.valor;
+        } else if (text && termino.tipo === 'variable' && termino.valor > 0) {
+            return text + '+' + termino.valor + this.incognita;
+        } else if (text && termino.tipo === 'numero' && termino.valor > 0) {
+            return text + '+' + termino.valor;
+        } else if (termino.tipo === 'variable' && termino.valor < 0) {
+            return text + termino.valor + this.incognita;
+        }
+        return text + termino.valor;
     }
 }
 
@@ -149,14 +143,14 @@ class Calculadora {
 
 const crearEcuacionLineal = () => new EcuacionLineal();
 
-const expresion  = crearEcuacionLineal()
-.addVar(7)
-.addVar(-2)
-.addNumero(4)
-.addSignoIgual()
-.addNumero(8)
-.addVar(3)
-.addNumero(2);
+const expresion = crearEcuacionLineal()
+    .addVar(7)
+    .addVar(-2)
+    .addNumero(4)
+    .addSignoIgual()
+    .addNumero(8)
+    .addVar(3)
+    .addNumero(2);
 
 const calc = new Calculadora(expresion);
 calc.resolver();
