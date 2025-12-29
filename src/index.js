@@ -1,13 +1,16 @@
+
 class EcuacionLineal {
-    constructor() {
-        this.terminosIzq = [];
-        this.terminosDer = [];
+    constructor(incognita) {
+        this.incognita = incognita ?? 'x';
+        this.terminosIzq = new Set();
+        this.terminosDer = new Set();
         this.terminos = this.terminosIzq;
         this.estaSignoIgual = false;
+        this.innerText = this.innerText.bind(this);
     }
 
     addVar(numero) {
-        this.terminos.push({
+        this.terminos.add({
             tipo: 'variable',
             valor: numero
         });
@@ -15,19 +18,16 @@ class EcuacionLineal {
     }
 
     addNumero(numero) {
-        this.terminos.push({
+        this.terminos.add({
             tipo: 'numero',
-            valor:numero
+            valor: numero
         });
         return this;
     }
 
     addSignoIgual() {
-        if (this.terminosIzq.length === 0 ) {
-            throw new TypeError('No es una ecuacion');
-        }
-        if (this.estaSignoIgual) {
-            throw new TypeError('No puede duplicar el signo =');
+        if (this.terminos === this.terminosDer) {
+            throw new TypeError('No se puede duplicar el signo =');
         }
         this.estaSignoIgual = true;
         this.terminos = this.terminosDer;
@@ -35,96 +35,71 @@ class EcuacionLineal {
     }
 
     isValid() {
-        if (!this.estaSignoIgual) {
-            return false;            
-        }
+        if (this.terminosIzq.size === 0) return false;
 
-        if(this.terminosIzq.length === 0) {
-            return false;
-        }
+        if (!this.estaSignoIgual) return false;
+
+        if (this.terminosDer.size === 0) return false;
+
         return true;
     }
 
     resolver() {
         if (!this.isValid()) {
-            throw new TypeError('Expresion mal formada');
+            throw new TypeError('Ecuacion mal formada');
         }
 
-        this.transponerTerminos();
+        const [izq, der] = this.transponerTerminos(this.terminosIzq, this.terminosDer);
+        const totalIzq = izq.reduce((result, termino) => result + termino.valor, 0);
+        let totalDer = der.reduce((result, termino) => result + termino.valor, 0);
 
-        const totalDer = this.terminosDer.reduce((result, termino) => {
-            return result + termino.valor;
-        }, 0);
-
-        const totalIzq = this.terminosIzq.reduce((result, termino) => {
-            return result + termino.valor;
-        }, 0);
-
-        if ([-1, 1].includes(totalIzq)) {
-            if (totalIzq<0) totalDer *=-1;
-            return {
-                incognita: 'x',
-                valor:totalDer
-            };
-        } else {
-            return {incognita:'x',
-                valor:totalDer / totalIzq
-            };
-        }
+        const incognita = this.incognita;
+        return {
+            incognita,
+            valor: totalDer / totalIzq
+        };
     }
 
-    transponerTerminos() {
-        this.pasarIzqDer();
-        this.pasarDerIzq();
-    }
+    transponerTerminos(izq, der) {
+        izq.forEach(termino => {
+            if (termino.tipo === 'numero') {
+                izq.delete(termino);
+                termino.valor *= -1;
+                der.add(termino);
+            }
+        });
 
-    pasarIzqDer() {
-            this.terminosIzq
-            .map((termino, index)=> ({termino, index}))
-            .filter(({termino}) => termino.tipo === 'numero')
-            .forEach(({termino, index}) => {
-                this.terminosIzq.splice(index, 1);
-                termino.valor *=-1;
-                this.terminosDer.push(termino);
-            });        
-    }
+        der.forEach(termino => {
+            if (termino.tipo === 'variable') {
+                der.delete(termino);
+                termino.valor *= -1;
+                izq.add(termino);
+            }
+        });
 
-    pasarDerIzq() {
-            this.terminosDer
-            .map((termino, index)=> ({termino, index}))
-            .filter(({termino}) => termino.tipo === 'variable')
-            .forEach(({termino, index}) => {
-                this.terminosDer.splice(index, 1);
-                termino.valor *= -1; 
-                this.terminosIzq.push(termino);
-            });        
-
+        return [Array.from(izq), Array.from(der)];
     }
 
     toString() {
-        const terminos = [...this.terminosIzq, {tipo:'signo', valor:'='}, ...this.terminosDer];
-        return terminos.reduce((text, termino, index) => {
-            if (!text && termino.tipo==='variable' && termino.valor>0) {
-                return this.output(termino, 'x');
-            } else if (!text && termino.tipo==='numero' && termino.valor>0) {
-                return this.output(termino);
-            } else if (text && termino.tipo==='variable' && termino.valor>0) {
-                return text + '+' + this.output(termino, 'x');
-            } else if (text && termino.tipo==='numero' && termino.valor>0 && index===this.terminosIzq.length+1) {
-                return text + this.output(termino);
-            }  else if (text && termino.tipo==='numero' && termino.valor>0) {
-                return text + '+' + this.output(termino);
-            }
-            return `${text}${this.output(termino, 'x')}`;
-        },'');
+        return [...this.terminosIzq].reduce(this.innerText, '') + '=' + [...this.terminosDer].reduce(this.innerText, '');
     }
 
-    output(termino, nombre) {
-        if (termino.tipo === 'variable') {
-            return termino.valor + nombre
+    innerText(text, termino) {
+        if (!text && termino.tipo === 'variable' && termino.valor > 0) {
+            return `${termino.valor}${this.incognita}`;
+        } else if (!text && termino.tipo === 'numero' && termino.valor > 0) {
+            return termino.valor;
+        } else if (text && termino.tipo === 'variable' && termino.valor > 0) {
+            return `${text}+${termino.valor}${this.incognita}`;
+        } else if (text && termino.tipo === 'numero' && termino.valor > 0) {
+            return `${text}+${termino.valor}`;
+        } else if (termino.tipo === 'variable' && termino.valor < 0) {
+            // return text + termino.valor + this.incognita;
+            return `${text}${termino.valor}${this.incognita}`;
         }
-        return termino.valor;
+        return `${text}${termino.valor}`;
     }
+
 }
 
 
@@ -135,8 +110,8 @@ class Calculadora {
 
     resolver() {
         try {
-            console.log(expresion.toString())
-            const result = expresion.resolver();
+            console.log(this.expresion.toString())
+            const result = this.expresion.resolver();
             console.log(result);
         } catch (error) {
             console.log(error);
@@ -146,14 +121,47 @@ class Calculadora {
 
 const crearEcuacionLineal = () => new EcuacionLineal();
 
-const expresion  = crearEcuacionLineal()
-.addVar(7)
-.addVar(-2)
-.addNumero(4)
-.addSignoIgual()
-.addNumero(8)
-.addVar(3)
-.addNumero(2);
 
-const calc = new Calculadora(expresion);
-calc.resolver();
+function main() {
+    const expresiones = [];
+
+    expresiones.push(
+        crearEcuacionLineal()
+            .addVar(4)
+            .addNumero(-5)
+            .addSignoIgual()
+            .addVar(2)
+            .addNumero(1)
+    );
+
+    expresiones.push(
+        crearEcuacionLineal()
+            .addNumero(5)
+            .addVar(-4)
+            .addSignoIgual()
+            .addNumero(7)
+            .addVar(8)
+            .addNumero(-6)
+    );
+
+    expresiones.push(
+        crearEcuacionLineal()
+            .addVar(7)
+            .addVar(-2)
+            .addNumero(4)
+            .addSignoIgual()
+            .addNumero(8)
+            .addVar(3)
+            .addNumero(2)
+    );
+
+    expresiones.forEach((exp, index) => {
+        console.log('Ejemplo: ', index + 1);
+        const calculadora = new Calculadora(exp);
+        calculadora.resolver();
+        console.log();
+    });
+}
+
+
+main();

@@ -2,9 +2,9 @@
   "name": "exparitmetica",
   "version": "1.0.0",
   "description": "",
-  "main": "main.js",
+  "main": "index.js",
   "scripts": {
-    "dev": "node --watch src/main.js"    
+    "dev": "node --watch src/"    
   },
   "keywords": [],
   "author": "",
