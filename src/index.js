@@ -5,8 +5,36 @@ class EcuacionLineal {
         this.terminosIzq = new Set();
         this.terminosDer = new Set();
         this.terminos = this.terminosIzq;
-        this.estaSignoIgual = false;
         this.innerText = this.innerText.bind(this);
+    }
+
+    evaluate(expresionText) {
+        if (this.terminos === this.terminosDer) {
+            throw new TypeError('No se puede duplicar el metodo evaluate(texto)');
+        }
+        const [izq, der] = expresionText.split(/=+/);
+        this.transform(izq, this.terminosIzq);
+        this.transform(der, this.terminosDer);
+        this.terminos = this.terminosDer;
+        return this;
+    }
+
+    transform(text, miembro) {
+        const variables = text.match(/([+-]?\d+(?=x))/g) ?? [];
+        variables.map(n => Number(n)).forEach(valor => {
+            miembro.add({
+                tipo: 'variable',
+                valor
+            });
+        });
+        const nuevoText = text.replace(/([+-]?\d+(?=x)x)/g, '');
+        const constantes = nuevoText.match(/([+-]?\d+)/g) ?? [];
+        constantes.map(n => Number(n)).forEach(valor => {
+            miembro.add({
+                tipo: 'numero',
+                valor
+            });
+        });
     }
 
     addVar(numero) {
@@ -29,7 +57,6 @@ class EcuacionLineal {
         if (this.terminos === this.terminosDer) {
             throw new TypeError('No se puede duplicar el signo =');
         }
-        this.estaSignoIgual = true;
         this.terminos = this.terminosDer;
         return this;
     }
@@ -37,7 +64,7 @@ class EcuacionLineal {
     isValid() {
         if (this.terminosIzq.size === 0) return false;
 
-        if (!this.estaSignoIgual) return false;
+        if (!this.terminos === this.terminosIzq) return false;
 
         if (this.terminosDer.size === 0) return false;
 
@@ -94,7 +121,6 @@ class EcuacionLineal {
         } else if (text && termino.tipo === 'numero' && termino.valor > 0) {
             return `${text}+${termino.valor}`;
         } else if (termino.tipo === 'variable' && termino.valor < 0) {
-            // return text + termino.valor + this.incognita;
             return `${text}${termino.valor}${this.incognita}`;
         }
         return `${text}${termino.valor}`;
@@ -154,6 +180,11 @@ function main() {
             .addVar(3)
             .addNumero(2)
     );
+
+    expresiones.push(
+        crearEcuacionLineal()
+        .evaluate('2x-5=9')
+    )
 
     expresiones.forEach((exp, index) => {
         console.log('Ejemplo: ', index + 1);
