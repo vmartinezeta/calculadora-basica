@@ -8,20 +8,35 @@ class EcuacionLineal {
         this.innerText = this.innerText.bind(this);
     }
 
+    isValidText(text) {
+        if (/\s/.test(text)) return false;
+        if (/\=(?=\=+)/.test(text)) return false;
+        const varsRegex = new RegExp(`([+-]?\\d*\\.?\\d*)${this.incognita}(?!\\w)`, 'g');
+        let nuevoText = text.replace(varsRegex, '');
+        const restoRegex = /([+-]?\d+\.?\d*)|=/g;
+        nuevoText = nuevoText.replace(restoRegex, '');
+        if (nuevoText.length > 0) return false;
+        return true;
+    }
+
     evaluate(expresionText) {
+        if (!this.isValidText(expresionText)) {
+            throw new TypeError('No es valida la ecuacion');
+        }
         if (this.terminos === this.terminosDer) {
             throw new TypeError('No se puede duplicar el metodo evaluate(texto)');
         }
-        const [izq, der] = expresionText.split(/=+/);
+        const [izq, der] = expresionText.split(/=/);
         this.transform(izq, this.terminosIzq);
         this.transform(der, this.terminosDer);
+        
         this.terminos = this.terminosDer;
         return this;
     }
 
     transform(text, miembro) {
         const variables = text.match(/([+-]?\d+(?=x))/g) ?? [];
-        variables.map(n => Number(n)).forEach(valor => {
+        variables.map(Number).forEach(valor => {
             miembro.add({
                 tipo: 'variable',
                 valor
@@ -29,7 +44,7 @@ class EcuacionLineal {
         });
         const nuevoText = text.replace(/([+-]?\d+(?=x)x)/g, '');
         const constantes = nuevoText.match(/([+-]?\d+)/g) ?? [];
-        constantes.map(n => Number(n)).forEach(valor => {
+        constantes.map(Number).forEach(valor => {
             miembro.add({
                 tipo: 'numero',
                 valor
@@ -196,3 +211,9 @@ function main() {
 
 
 main();
+
+
+// const incognita = 'x';
+// const regex = new RegExp(`[+-]?\\d+(?=${incognita}(?!\w))`,'g')
+// const array = "-10-20x+45x".match(regex) ?? [];
+// console.log(array)
