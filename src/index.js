@@ -35,7 +35,8 @@ class EcuacionLineal {
     }
 
     transform(text, miembro) {
-        const variables = text.match(/([+-]?\d+(?=x))/g) ?? [];
+        const regex = new RegExp(`[+-]?\\d+(?=${this.incognita}(?!\w))`,'g')        
+        const variables = text.match(regex) ?? [];
         variables.map(Number).forEach(valor => {
             miembro.add({
                 tipo: 'variable',
@@ -211,9 +212,3 @@ function main() {
 
 
 main();
-
-
-// const incognita = 'x';
-// const regex = new RegExp(`[+-]?\\d+(?=${incognita}(?!\w))`,'g')
-// const array = "-10-20x+45x".match(regex) ?? [];
-// console.log(array)
