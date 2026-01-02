@@ -2,49 +2,67 @@
 class EcuacionLineal {
     constructor(incognita) {
         this.incognita = incognita ?? 'x';
+        this.regexLiteral = new RegExp(`([+-]?\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
+        this.regexConstanteBit = new RegExp(`\\d*(?<!\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
+        this.regexCoeficientes = new RegExp(`[+-]?\\d*\\.?\\d+(?=${this.incognita}(?!\\w))`, 'g');
+        this.regexConstantes = /[+-]?\d*\.?\d+/g;
         this.terminosIzq = new Set();
         this.terminosDer = new Set();
         this.terminos = this.terminosIzq;
         this.innerText = this.innerText.bind(this);
     }
 
-    isValidText(text) {
-        if (/\s/.test(text)) return false;
-        if (/\=(?=\=+)/.test(text)) return false;
-        const varsRegex = new RegExp(`([+-]?\\d*\\.?\\d*)${this.incognita}(?!\\w)`, 'g');
-        let nuevoText = text.replace(varsRegex, '');
-        const restoRegex = /([+-]?\d+\.?\d*)|=/g;
-        nuevoText = nuevoText.replace(restoRegex, '');
-        if (nuevoText.length > 0) return false;
+    _isValid(expresion) {
+        let exp = this.limpiarExpresion(expresion);
+        if (/\=(?=\=+)/.test(exp)) return false;
+        exp = exp.replace(this.regexLiteral, '')
+        .replace(this.regexConstantes, '')
+        .replace('=', '');
+        if (exp.length) return false;
         return true;
     }
 
-    evaluate(expresionText) {
-        if (!this.isValidText(expresionText)) {
-            throw new TypeError('No es valida la ecuacion');
+    evaluate(expresion) {
+        if (!this._isValid(expresion)) {
+            throw new TypeError('No es valida la expresion');
         }
+
         if (this.terminos === this.terminosDer) {
             throw new TypeError('No se puede duplicar el metodo evaluate(texto)');
         }
-        const [izq, der] = expresionText.split(/=/);
-        this.transform(izq, this.terminosIzq);
-        this.transform(der, this.terminosDer);
+
+        const exp = this.limpiarExpresion(expresion);
+        const [izq, der] = exp.split(/=/);
+        this.transformar(izq, this.terminosIzq);
+        this.transformar(der, this.terminosDer);
         
         this.terminos = this.terminosDer;
         return this;
     }
 
-    transform(text, miembro) {
-        const regex = new RegExp(`[+-]?\\d+(?=${this.incognita}(?!\w))`,'g')        
-        const variables = text.match(regex) ?? [];
+    limpiarExpresion(expresion) {
+        // Eliminar espacios y convertir a minúsculas
+        return expresion
+            .replace(/\s+/g, '')
+            .toLowerCase()
+            .replace(/--/g, '+')  // Doble negativo = positivo
+            .replace(/\+\+/g, '+') // Doble positivo = positivo
+            .replace(/\+\-/g, '-') // Positivo y negativo = negativo
+            .replace(/\-\+/g, '-') // Negativo y positivo = negativo
+            .replace(this.regexConstanteBit, `1${this.incognita}`);
+    }    
+
+    transformar(text, miembro) {
+        const variables = text.match(this.regexCoeficientes) ?? [];
+        console.log('ok',variables)
         variables.map(Number).forEach(valor => {
             miembro.add({
                 tipo: 'variable',
                 valor
             });
         });
-        const nuevoText = text.replace(/([+-]?\d+(?=x)x)/g, '');
-        const constantes = nuevoText.match(/([+-]?\d+)/g) ?? [];
+        const nuevoText = text.replace(this.regexLiteral, '');
+        const constantes = nuevoText.match(this.regexConstantes) ?? [];
         constantes.map(Number).forEach(valor => {
             miembro.add({
                 tipo: 'numero',
@@ -129,15 +147,15 @@ class EcuacionLineal {
 
     innerText(text, termino) {
         if (!text && termino.tipo === 'variable' && termino.valor > 0) {
-            return `${termino.valor}${this.incognita}`;
+            return `${termino.valor===1?'':termino.valor}${this.incognita}`;
         } else if (!text && termino.tipo === 'numero' && termino.valor > 0) {
             return termino.valor;
         } else if (text && termino.tipo === 'variable' && termino.valor > 0) {
-            return `${text}+${termino.valor}${this.incognita}`;
+            return `${text}+${termino.valor===1?'':termino.valor}${this.incognita}`;
         } else if (text && termino.tipo === 'numero' && termino.valor > 0) {
             return `${text}+${termino.valor}`;
         } else if (termino.tipo === 'variable' && termino.valor < 0) {
-            return `${text}${termino.valor}${this.incognita}`;
+            return `${text}${termino.valor===1?'':termino.valor}${this.incognita}`;
         }
         return `${text}${termino.valor}`;
     }
@@ -160,6 +178,7 @@ class Calculadora {
         }
     }
 }
+
 
 const crearEcuacionLineal = () => new EcuacionLineal();
 
@@ -199,7 +218,7 @@ function main() {
 
     expresiones.push(
         crearEcuacionLineal()
-        .evaluate('2x-5=9')
+        .evaluate('2x - 5 = 9')
     )
 
     expresiones.forEach((exp, index) => {
