@@ -1,7 +1,7 @@
 
-class EcuacionLineal {
+class SuperEcuacionLineal {
     constructor(incognita) {
-        this.incognita = incognita ?? 'x';
+        this.incognita = incognita;
         this.regexLiteral = new RegExp(`([+-]?\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
         this.regexConstanteBit = new RegExp(`\\d*(?<!\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
         this.regexCoeficientes = new RegExp(`[+-]?\\d*\\.?\\d+(?=${this.incognita}(?!\\w))`, 'g');
@@ -12,65 +12,11 @@ class EcuacionLineal {
         this.innerText = this.innerText.bind(this);
     }
 
-    _isValid(expresion) {
-        let exp = this.limpiarExpresion(expresion);
-        if (/\=(?=\=+)/.test(exp)) return false;
-        exp = exp.replace(this.regexLiteral, '')
-        .replace(this.regexConstantes, '')
-        .replace('=', '');
-        if (exp.length) return false;
-        return true;
-    }
-
-    evaluate(expresion) {
-        if (!this._isValid(expresion)) {
-            throw new TypeError('No es valida la expresion');
-        }
-
-        if (this.terminos === this.terminosDer) {
-            throw new TypeError('No se puede duplicar el metodo evaluate(texto)');
-        }
-
-        const exp = this.limpiarExpresion(expresion);
-        const [izq, der] = exp.split(/=/);
-        this.transformar(izq, this.terminosIzq);
-        this.transformar(der, this.terminosDer);
-        
-        this.terminos = this.terminosDer;
-        return this;
-    }
-
-    limpiarExpresion(expresion) {
-        // Eliminar espacios y convertir a minúsculas
-        return expresion
-            .replace(/\s+/g, '')
-            .toLowerCase()
-            .replace(/--/g, '+')  // Doble negativo = positivo
-            .replace(/\+\+/g, '+') // Doble positivo = positivo
-            .replace(/\+\-/g, '-') // Positivo y negativo = negativo
-            .replace(/\-\+/g, '-') // Negativo y positivo = negativo
-            .replace(this.regexConstanteBit, `1${this.incognita}`);
-    }    
-
-    transformar(text, miembro) {
-        const variables = text.match(this.regexCoeficientes) ?? [];
-        variables.map(Number).forEach(valor => {
-            miembro.add({
-                tipo: 'variable',
-                valor
-            });
-        });
-        const nuevoText = text.replace(this.regexLiteral, '');
-        const constantes = nuevoText.match(this.regexConstantes) ?? [];
-        constantes.map(Number).forEach(valor => {
-            miembro.add({
-                tipo: 'numero',
-                valor
-            });
-        });
-    }
-
     addVar(numero) {
+        if (this instanceof EcuacionLineal) {
+            throw new TypeError('No existe el metodo');
+        }
+
         this.terminos.add({
             tipo: 'variable',
             valor: numero
@@ -79,6 +25,10 @@ class EcuacionLineal {
     }
 
     addNumero(numero) {
+        if (this instanceof EcuacionLineal) {
+            throw new TypeError('No existe el metodo');
+        }
+
         this.terminos.add({
             tipo: 'numero',
             valor: numero
@@ -87,6 +37,10 @@ class EcuacionLineal {
     }
 
     addSignoIgual() {
+        if (this instanceof EcuacionLineal) {
+            throw new TypeError('No existe el metodo');
+        }
+        
         if (this.terminos === this.terminosDer) {
             throw new TypeError('No se puede duplicar el signo =');
         }
@@ -162,6 +116,67 @@ class EcuacionLineal {
 }
 
 
+class EcuacionLineal extends SuperEcuacionLineal{
+
+    constructor(expresion, variable) {
+        super(variable);
+        if (!this._isValid(expresion)) {
+            throw new TypeError('No es valida la expresion');
+        }
+
+        if (this.terminos === this.terminosDer) {
+            throw new TypeError('No se puede duplicar el metodo evaluate(texto)');
+        }
+
+        const exp = this.limpiarExpresion(expresion);
+        const [izq, der] = exp.split(/=/);
+        this.transformar(izq, this.terminosIzq);
+        this.transformar(der, this.terminosDer);        
+        this.terminos = this.terminosDer;
+    }
+
+    _isValid(expresion) {
+        let exp = this.limpiarExpresion(expresion);
+        if (/\=(?=\=+)/.test(exp)) return false;
+        exp = exp.replace(this.regexLiteral, '')
+        .replace(this.regexConstantes, '')
+        .replace('=', '');
+        if (exp.length) return false;
+        return true;
+    }
+
+    limpiarExpresion(expresion) {
+        // Eliminar espacios y convertir a minúsculas
+        return expresion
+            .replace(/\s+/g, '')
+            .toLowerCase()
+            .replace(/--/g, '+')  // Doble negativo = positivo
+            .replace(/\+\+/g, '+') // Doble positivo = positivo
+            .replace(/\+\-/g, '-') // Positivo y negativo = negativo
+            .replace(/\-\+/g, '-') // Negativo y positivo = negativo
+            .replace(this.regexConstanteBit, `1${this.incognita}`);
+    }
+
+    transformar(text, miembro) {
+        const variables = text.match(this.regexCoeficientes) ?? [];
+        variables.map(Number).forEach(valor => {
+            miembro.add({
+                tipo: 'variable',
+                valor
+            });
+        });
+        const nuevoText = text.replace(this.regexLiteral, '');
+        const constantes = nuevoText.match(this.regexConstantes) ?? [];
+        constantes.map(Number).forEach(valor => {
+            miembro.add({
+                tipo: 'numero',
+                valor
+            });
+        });
+    }    
+}
+
+
 class Calculadora {
     constructor(expresion) {
         this.expresion = expresion;
@@ -179,7 +194,12 @@ class Calculadora {
 }
 
 
-const crearEcuacionLineal = () => new EcuacionLineal();
+function crearEcuacionLineal(arg0='x') {
+    if (typeof arg0 === 'string') {
+        return new SuperEcuacionLineal(arg0);
+    }
+    return new EcuacionLineal(arg0.expresion, arg0.variable);
+} 
 
 
 function main() {
@@ -216,8 +236,7 @@ function main() {
     );
 
     expresiones.push(
-        crearEcuacionLineal()
-        .evaluate('2x - 5 = 9')
+        crearEcuacionLineal({expresion:'2y - 5 = 9', variable:'y'})
     )
 
     expresiones.forEach((exp, index) => {
