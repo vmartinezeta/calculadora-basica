@@ -54,7 +54,6 @@ class EcuacionLineal {
 
     transformar(text, miembro) {
         const variables = text.match(this.regexCoeficientes) ?? [];
-        console.log('ok',variables)
         variables.map(Number).forEach(valor => {
             miembro.add({
                 tipo: 'variable',
