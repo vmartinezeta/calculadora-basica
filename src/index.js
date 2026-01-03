@@ -1,10 +1,4 @@
-import rl from 'readline';
-
-const readline = rl.createInterface({
-    input: process.stdin,
-    output: process.stdout
-});
-
+import readline from 'readline';
 
 class SolucionarioEcuacion {
     constructor(incognita) {
@@ -128,39 +122,31 @@ class SuperEcuacionLineal extends SolucionarioEcuacion {
 class EcuacionLineal extends SolucionarioEcuacion {
     constructor(expresion, variable) {
         super(variable);
-        this.expresion = expresion;
-        this.valido = false;
         this.regexLiteral = new RegExp(`([+-]?\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
         this.regexConstanteBit = new RegExp(`\\d*(?<!\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
         this.regexCoeficientes = new RegExp(`[+-]?\\d*\\.?\\d+(?=${this.incognita}(?!\\w))`, 'g');
         this.regexConstantes = /[+-]?\d*\.?\d+/g;
 
-        this.validar(expresion);
-        if (!this.valido) {
-            return;
+        const result = this.validar(expresion);
+        if (!result.ok) {
+            throw new TypeError('Mal la ecuacion');
         }
 
-        const [izq, der] = this.expresion.split(/=/);
+        const [izq, der] = result.expresion.split(/=/);
         this.transformar(izq, this.terminosIzq);
         this.transformar(der, this.terminosDer);
         this.terminos = this.terminosDer;
     }
 
     validar(input) {
+        const result = {ok: false, expresion:null};
         const expresion = this.limpiarExpresion(input);
-        if (/\=(?=\=+)/.test(expresion)) {
-            this.valido = false;
-            return;
-        }
+        if (/\=(?=\=+)/.test(expresion)) return result;
         const final = expresion.replace(this.regexLiteral, '')
             .replace(this.regexConstantes, '')
             .replace('=', '');
-        if (final.length)  {
-            this.valido = false;
-            return;
-        }
-        this.valido = true
-        this.expresion = expresion;
+        if (final.length) return result;
+        return {ok:true, expresion};
     }
 
     limpiarExpresion(expresion) {
@@ -215,6 +201,20 @@ class Calculadora {
         this.procesarOpcionMenu(answer);
     }
 
+    inputText(query) {
+        return new Promise((resolve) => {
+            const rl = readline.createInterface({
+                input: process.stdin,
+                output: process.stdout
+            });
+
+            rl.question(query, (answer) => {
+                rl.close();
+                resolve(answer);
+            });
+        });
+    }
+
     async procesarOpcionMenu(answer) {
         switch (answer) {
             case '1':
@@ -237,23 +237,15 @@ class Calculadora {
         }
     }
 
-    inputText(text) {
-        return new Promise((resolve) => {
-            readline.question(text, (answer) => {
-                resolve(answer);
-            });
-        });
-    }
-
     async resolverEcuacionesLineales() {
         const expresion = await this.inputText('\n¿Inserte una ecuacion lineal?:');
-        const ecuacion = this.crearEcuacionLineal({expresion, variable:this.incognita});
-        if (ecuacion.valido) {
-            console.log('Ecuacion: ',ecuacion.toString())
+        const ecuacion = this.crearEcuacionLineal({ expresion, variable: this.incognita });
+        try{
+            console.log('Ecuacion: ', ecuacion.toString());
             const result = ecuacion.resolver();
             console.log(result);
-        } else {
-            console.log("Ecuacion mal formada");
+        } catch(error) {
+            console.log(error);
         }
     }
 
