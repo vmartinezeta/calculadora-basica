@@ -1,51 +1,18 @@
+import rl from 'readline';
 
-class SuperEcuacionLineal {
+const readline = rl.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+
+class SolucionarioEcuacion {
     constructor(incognita) {
         this.incognita = incognita;
-        this.regexLiteral = new RegExp(`([+-]?\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
-        this.regexConstanteBit = new RegExp(`\\d*(?<!\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
-        this.regexCoeficientes = new RegExp(`[+-]?\\d*\\.?\\d+(?=${this.incognita}(?!\\w))`, 'g');
-        this.regexConstantes = /[+-]?\d*\.?\d+/g;
         this.terminosIzq = new Set();
         this.terminosDer = new Set();
         this.terminos = this.terminosIzq;
         this.innerText = this.innerText.bind(this);
-    }
-
-    addVar(numero) {
-        if (this instanceof EcuacionLineal) {
-            throw new TypeError('No existe el metodo');
-        }
-
-        this.terminos.add({
-            tipo: 'variable',
-            valor: numero
-        });
-        return this;
-    }
-
-    addNumero(numero) {
-        if (this instanceof EcuacionLineal) {
-            throw new TypeError('No existe el metodo');
-        }
-
-        this.terminos.add({
-            tipo: 'numero',
-            valor: numero
-        });
-        return this;
-    }
-
-    addSignoIgual() {
-        if (this instanceof EcuacionLineal) {
-            throw new TypeError('No existe el metodo');
-        }
-        
-        if (this.terminos === this.terminosDer) {
-            throw new TypeError('No se puede duplicar el signo =');
-        }
-        this.terminos = this.terminosDer;
-        return this;
     }
 
     isValid() {
@@ -100,49 +67,100 @@ class SuperEcuacionLineal {
 
     innerText(text, termino) {
         if (!text && termino.tipo === 'variable' && termino.valor > 0) {
-            return `${termino.valor===1?'':termino.valor}${this.incognita}`;
+            return `${termino.valor === 1 ? '' : termino.valor}${this.incognita}`;
         } else if (!text && termino.tipo === 'numero' && termino.valor > 0) {
             return termino.valor;
         } else if (text && termino.tipo === 'variable' && termino.valor > 0) {
-            return `${text}+${termino.valor===1?'':termino.valor}${this.incognita}`;
+            return `${text}+${termino.valor === 1 ? '' : termino.valor}${this.incognita}`;
         } else if (text && termino.tipo === 'numero' && termino.valor > 0) {
             return `${text}+${termino.valor}`;
         } else if (termino.tipo === 'variable' && termino.valor < 0) {
-            return `${text}${termino.valor===1?'':termino.valor}${this.incognita}`;
+            return `${text}${termino.valor === 1 ? '' : termino.valor}${this.incognita}`;
         }
         return `${text}${termino.valor}`;
     }
 
 }
 
+class SuperEcuacionLineal extends SolucionarioEcuacion {
+    constructor(incognita) {
+        super(incognita);
+    }
 
-class EcuacionLineal extends SuperEcuacionLineal{
+    addVar(numero) {
+        if (this instanceof EcuacionLineal) {
+            throw new TypeError('No existe el metodo');
+        }
 
-    constructor(expresion, variable) {
-        super(variable);
-        if (!this._isValid(expresion)) {
-            throw new TypeError('No es valida la expresion');
+        this.terminos.add({
+            tipo: 'variable',
+            valor: numero
+        });
+        return this;
+    }
+
+    addNumero(numero) {
+        if (this instanceof EcuacionLineal) {
+            throw new TypeError('No existe el metodo');
+        }
+
+        this.terminos.add({
+            tipo: 'numero',
+            valor: numero
+        });
+        return this;
+    }
+
+    addSignoIgual() {
+        if (this instanceof EcuacionLineal) {
+            throw new TypeError('No existe el metodo');
         }
 
         if (this.terminos === this.terminosDer) {
-            throw new TypeError('No se puede duplicar el metodo evaluate(texto)');
+            throw new TypeError('No se puede duplicar el signo =');
+        }
+        this.terminos = this.terminosDer;
+        return this;
+    }
+
+}
+
+class EcuacionLineal extends SolucionarioEcuacion {
+    constructor(expresion, variable) {
+        super(variable);
+        this.expresion = expresion;
+        this.valido = false;
+        this.regexLiteral = new RegExp(`([+-]?\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
+        this.regexConstanteBit = new RegExp(`\\d*(?<!\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
+        this.regexCoeficientes = new RegExp(`[+-]?\\d*\\.?\\d+(?=${this.incognita}(?!\\w))`, 'g');
+        this.regexConstantes = /[+-]?\d*\.?\d+/g;
+
+        this.validar(expresion);
+        if (!this.valido) {
+            return;
         }
 
-        const exp = this.limpiarExpresion(expresion);
-        const [izq, der] = exp.split(/=/);
+        const [izq, der] = this.expresion.split(/=/);
         this.transformar(izq, this.terminosIzq);
-        this.transformar(der, this.terminosDer);        
+        this.transformar(der, this.terminosDer);
         this.terminos = this.terminosDer;
     }
 
-    _isValid(expresion) {
-        let exp = this.limpiarExpresion(expresion);
-        if (/\=(?=\=+)/.test(exp)) return false;
-        exp = exp.replace(this.regexLiteral, '')
-        .replace(this.regexConstantes, '')
-        .replace('=', '');
-        if (exp.length) return false;
-        return true;
+    validar(input) {
+        const expresion = this.limpiarExpresion(input);
+        if (/\=(?=\=+)/.test(expresion)) {
+            this.valido = false;
+            return;
+        }
+        const final = expresion.replace(this.regexLiteral, '')
+            .replace(this.regexConstantes, '')
+            .replace('=', '');
+        if (final.length)  {
+            this.valido = false;
+            return;
+        }
+        this.valido = true
+        this.expresion = expresion;
     }
 
     limpiarExpresion(expresion) {
@@ -173,79 +191,138 @@ class EcuacionLineal extends SuperEcuacionLineal{
                 valor
             });
         });
-    }    
+    }
 }
-
 
 class Calculadora {
-    constructor(expresion) {
-        this.expresion = expresion;
+    constructor() {
+        this.incognita = 'x';
     }
 
-    resolver() {
-        try {
-            console.log(this.expresion.toString())
-            const result = this.expresion.resolver();
-            console.log(result);
-        } catch (error) {
-            console.log(error);
+    menuPrincipal() {
+        console.log('  1.- Ecuaciones lineales de primer grado');
+        console.log('  2.- Ecuaciones lineales con dos incognitas');
+        console.log('  3.- Ecuaciones cuadraticas');
+        console.log('  4.- Ejemplos de prueba');
+        console.log(`  5.- Cambiar variable(actual = ${this.incognita}) ecuaciones lineales de primer grado`);
+        console.log('  6.- Salir');
+    }
+
+    async render() {
+        console.log('Calculadora basica');
+        this.menuPrincipal();
+        const answer = await this.inputText('\n¿Inserte una opcion?: ');
+        this.procesarOpcionMenu(answer);
+    }
+
+    async procesarOpcionMenu(answer) {
+        switch (answer) {
+            case '1':
+                await this.resolverEcuacionesLineales();
+                this.render();
+                break;
+            case '4':
+                this.ejemplificar();
+                this.render();
+                break;
+            case '5':
+                await this.updateIncognita();
+                this.render()
+                break;
+            case '6':
+                readline.close();
+                break;
+            default:
+                this.render();
         }
     }
-}
 
-
-function crearEcuacionLineal(arg0='x') {
-    if (typeof arg0 === 'string') {
-        return new SuperEcuacionLineal(arg0);
+    inputText(text) {
+        return new Promise((resolve) => {
+            readline.question(text, (answer) => {
+                resolve(answer);
+            });
+        });
     }
-    return new EcuacionLineal(arg0.expresion, arg0.variable);
-} 
 
+    async resolverEcuacionesLineales() {
+        const expresion = await this.inputText('\n¿Inserte una ecuacion lineal?:');
+        const ecuacion = this.crearEcuacionLineal({expresion, variable:this.incognita});
+        if (ecuacion.valido) {
+            console.log('Ecuacion: ',ecuacion.toString())
+            const result = ecuacion.resolver();
+            console.log(result);
+        } else {
+            console.log("Ecuacion mal formada");
+        }
+    }
 
-function main() {
-    const expresiones = [];
+    ejemplificar() {
+        const expresiones = [];
 
-    expresiones.push(
-        crearEcuacionLineal()
-            .addVar(4)
-            .addNumero(-5)
-            .addSignoIgual()
-            .addVar(2)
-            .addNumero(1)
-    );
+        expresiones.push(
+            this.crearEcuacionLineal()
+                .addVar(4)
+                .addNumero(-5)
+                .addSignoIgual()
+                .addVar(2)
+                .addNumero(1)
+        );
 
-    expresiones.push(
-        crearEcuacionLineal()
-            .addNumero(5)
-            .addVar(-4)
-            .addSignoIgual()
-            .addNumero(7)
-            .addVar(8)
-            .addNumero(-6)
-    );
+        expresiones.push(
+            this.crearEcuacionLineal()
+                .addNumero(5)
+                .addVar(-4)
+                .addSignoIgual()
+                .addNumero(7)
+                .addVar(8)
+                .addNumero(-6)
+        );
 
-    expresiones.push(
-        crearEcuacionLineal()
-            .addVar(7)
-            .addVar(-2)
-            .addNumero(4)
-            .addSignoIgual()
-            .addNumero(8)
-            .addVar(3)
-            .addNumero(2)
-    );
+        expresiones.push(
+            this.crearEcuacionLineal()
+                .addVar(7)
+                .addVar(-2)
+                .addNumero(4)
+                .addSignoIgual()
+                .addNumero(8)
+                .addVar(3)
+                .addNumero(2)
+        );
 
-    expresiones.push(
-        crearEcuacionLineal({expresion:'2y - 5 = 9', variable:'y'})
-    )
+        expresiones.push(
+            this.crearEcuacionLineal({ expresion: '2y - 5 = 9', variable: 'y' })
+        )
 
-    expresiones.forEach((exp, index) => {
-        console.log('Ejemplo: ', index + 1);
-        const calculadora = new Calculadora(exp);
-        calculadora.resolver();
-        console.log();
-    });
+        console.log('Ejemplos de prueba');
+        expresiones.forEach((exp, index) => {
+            console.log('Ejemplo: ', index + 1);
+            try {
+                console.log(exp.toString());
+                console.log(exp.resolver());
+            } catch (error) {
+                console.log(error);
+            }
+            console.log();
+        });
+    }
+
+    async updateIncognita() {
+        const answer = await this.inputText('\n ¿Ingrese la nueva variable?:');
+        if (answer.length === 1 && /[a-z]/.test(answer)) {
+            this.incognita = answer;
+        }
+    }
+
+    crearEcuacionLineal(arg0 = 'x') {
+        if (typeof arg0 === 'string') {
+            return new SuperEcuacionLineal(arg0);
+        }
+        return new EcuacionLineal(arg0.expresion, arg0.variable);
+    }
+
 }
 
 
-main();
+const calculadora = new Calculadora();
+calculadora.render();
