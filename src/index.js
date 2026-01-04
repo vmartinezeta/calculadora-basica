@@ -1,6 +1,12 @@
 import readline from 'readline';
 
-class SolucionarioEcuacion {
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+
+class ResolverEcuacion {
     constructor(incognita) {
         this.incognita = incognita;
         this.terminosIzq = new Set();
@@ -28,10 +34,20 @@ class SolucionarioEcuacion {
         const totalIzq = izq.reduce((result, termino) => result + termino.valor, 0);
         let totalDer = der.reduce((result, termino) => result + termino.valor, 0);
 
+        if (totalIzq === 0) {
+            throw new TypeError('No tiene solucion la ecuacion');
+        }
+
         const incognita = this.incognita;
+        let valor = totalDer / totalIzq;
+        if (!Number.isInteger(valor)) {
+            valor = Math.round(valor * 1e10) / 1e10;
+            valor = parseFloat(valor.toFixed(10));
+        }
+
         return {
             incognita,
-            valor: totalDer / totalIzq
+            valor
         };
     }
 
@@ -76,7 +92,7 @@ class SolucionarioEcuacion {
 
 }
 
-class SuperEcuacionLineal extends SolucionarioEcuacion {
+class SuperEcuacionLineal extends ResolverEcuacion {
     constructor(incognita) {
         super(incognita);
     }
@@ -119,7 +135,7 @@ class SuperEcuacionLineal extends SolucionarioEcuacion {
 
 }
 
-class EcuacionLineal extends SolucionarioEcuacion {
+class EcuacionLineal extends ResolverEcuacion {
     constructor(expresion, variable) {
         super(variable);
         this.regexLiteral = new RegExp(`([+-]?\\d*\\.?\\d+)${this.incognita}(?!\\w)`, 'g');
@@ -139,14 +155,14 @@ class EcuacionLineal extends SolucionarioEcuacion {
     }
 
     validar(input) {
-        const result = {ok: false, expresion:null};
+        const result = { ok: false, expresion: null };
         const expresion = this.limpiarExpresion(input);
         if (/\=(?=\=+)/.test(expresion)) return result;
         const final = expresion.replace(this.regexLiteral, '')
             .replace(this.regexConstantes, '')
             .replace('=', '');
         if (final.length) return result;
-        return {ok:true, expresion};
+        return { ok: true, expresion };
     }
 
     limpiarExpresion(expresion) {
@@ -189,8 +205,8 @@ class Calculadora {
         console.log('  1.- Ecuaciones lineales de primer grado');
         console.log('  2.- Ecuaciones lineales con dos incognitas');
         console.log('  3.- Ecuaciones cuadraticas');
+        console.log(`  5.- Cambiar variable(actual = ${this.incognita}), ecuaciones de primer grado`);
         console.log('  4.- Ejemplos de prueba');
-        console.log(`  5.- Cambiar variable(actual = ${this.incognita}) ecuaciones lineales de primer grado`);
         console.log('  6.- Salir');
     }
 
@@ -203,13 +219,7 @@ class Calculadora {
 
     inputText(query) {
         return new Promise((resolve) => {
-            const rl = readline.createInterface({
-                input: process.stdin,
-                output: process.stdout
-            });
-
             rl.question(query, (answer) => {
-                rl.close();
                 resolve(answer);
             });
         });
@@ -230,7 +240,7 @@ class Calculadora {
                 this.render()
                 break;
             case '6':
-                readline.close();
+                rl.close();
                 break;
             default:
                 this.render();
@@ -238,13 +248,13 @@ class Calculadora {
     }
 
     async resolverEcuacionesLineales() {
-        const expresion = await this.inputText('\n¿Inserte una ecuacion lineal?:');
-        const ecuacion = this.crearEcuacionLineal({ expresion, variable: this.incognita });
-        try{
+        const expresion = await this.inputText('\n¿Inserte una ecuacion lineal?: ');
+        try {
+            const ecuacion = new EcuacionLineal(expresion, this.incognita);
             console.log('Ecuacion: ', ecuacion.toString());
             const result = ecuacion.resolver();
             console.log(result);
-        } catch(error) {
+        } catch (error) {
             console.log(error);
         }
     }
